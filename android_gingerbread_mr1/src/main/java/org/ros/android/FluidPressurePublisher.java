@@ -38,10 +38,8 @@ import org.ros.node.topic.Publisher;
 /**
  * @author chadrockey@gmail.com (Chad Rockey)
  */
-public class FluidPressurePublisher implements NodeMain
-{
-
-    private FluidPressureThread fpThread;
+public class FluidPressurePublisher implements NodeMain {
+    private FluidPressureThread fluidPressureThread;
     private SensorListener sensorListener;
     private SensorManager sensorManager;
     private Publisher<FluidPressure> publisher;
@@ -53,27 +51,24 @@ public class FluidPressurePublisher implements NodeMain
         private SensorListener sensorListener;
         private Looper threadLooper;
 
-        private final Sensor fpSensor;
+        private final Sensor fluidPressureSensor;
 
-        private FluidPressureThread(SensorManager sensorManager, SensorListener sensorListener)
-        {
+        private FluidPressureThread(SensorManager sensorManager, SensorListener sensorListener) {
             this.sensorManager = sensorManager;
             this.sensorListener = sensorListener;
-            this.fpSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+            this.fluidPressureSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
         }
 
 
-        public void run()
-        {
+        public void run() {
             Looper.prepare();
             this.threadLooper = Looper.myLooper();
-            this.sensorManager.registerListener(this.sensorListener, this.fpSensor, sensorDelay);
+            this.sensorManager.registerListener(this.sensorListener, this.fluidPressureSensor, sensorDelay);
             Looper.loop();
         }
 
 
-        public void shutdown()
-        {
+        public void shutdown() {
             this.sensorManager.unregisterListener(this.sensorListener);
             if(this.threadLooper != null)
             {
@@ -82,26 +77,21 @@ public class FluidPressurePublisher implements NodeMain
         }
     }
 
-    private class SensorListener implements SensorEventListener
-    {
+    private class SensorListener implements SensorEventListener {
 
         private Publisher<FluidPressure> publisher;
 
-        private SensorListener(Publisher<FluidPressure> publisher)
-        {
+        private SensorListener(Publisher<FluidPressure> publisher) {
             this.publisher = publisher;
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy)
-        {
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
         }
 
         @Override
-        public void onSensorChanged(SensorEvent event)
-        {
-            if(event.sensor.getType() == Sensor.TYPE_PRESSURE)
-            {
+        public void onSensorChanged(SensorEvent event) {
+            if(event.sensor.getType() == Sensor.TYPE_PRESSURE) {
                 FluidPressure msg = this.publisher.newMessage();
                 Header header = msg.getHeader();
                 long time_delta_millis = System.currentTimeMillis() - SystemClock.uptimeMillis();
@@ -116,76 +106,59 @@ public class FluidPressurePublisher implements NodeMain
         }
     }
 
-    public FluidPressurePublisher(SensorManager manager)
-    {
+    public FluidPressurePublisher(SensorManager manager) {
         this(manager, SensorManager.SENSOR_DELAY_GAME);
     }
 
-    public FluidPressurePublisher(SensorManager manager, int sensorDelay)
-    {
+    public FluidPressurePublisher(SensorManager manager, int sensorDelay) {
         this.sensorManager = manager;
         this.sensorDelay = sensorDelay;
     }
 
-    public GraphName getDefaultNodeName()
-    {
+    public GraphName getDefaultNodeName() {
         return GraphName.of("android/fluid_pressure_publisher");
     }
 
-    public void onError(Node node, Throwable throwable)
-    {
+    public void onError(Node node, Throwable throwable) {
     }
 
-    public void onStart(ConnectedNode node)
-    {
-        try
-        {
-            List<Sensor> mfList = this.sensorManager.getSensorList(Sensor.TYPE_PRESSURE);
+    public void onStart(ConnectedNode node) {
+        try {
+            List<Sensor> fluidPressureList = this.sensorManager.getSensorList(Sensor.TYPE_PRESSURE);
 
-            if(mfList.size() > 0)
-            {
+            if(fluidPressureList.size() > 0) {
                 this.publisher = node.newPublisher("android/barometric_pressure", "sensor_msgs/FluidPressure");
                 this.sensorListener = new SensorListener(this.publisher);
-                this.fpThread = new FluidPressureThread(this.sensorManager, this.sensorListener);
-                this.fpThread.start();
+                this.fluidPressureThread = new FluidPressureThread(this.sensorManager, this.sensorListener);
+                this.fluidPressureThread.start();
             }
 
         }
-        catch (Exception e)
-        {
-            if (node != null)
-            {
+        catch (Exception e) {
+            if (node != null) {
                 node.getLog().fatal(e);
-            }
-            else
-            {
+            } else {
                 e.printStackTrace();
             }
         }
     }
 
-    //@Override
-    public void onShutdown(Node arg0)
-    {
-        if(this.fpThread == null){
+    @Override
+    public void onShutdown(Node node) {
+        if(this.fluidPressureThread == null) {
             return;
         }
 
-        this.fpThread.shutdown();
+        this.fluidPressureThread.shutdown();
 
-        try
-        {
-            this.fpThread.join();
-        }
-        catch (InterruptedException e)
-        {
+        try {
+            this.fluidPressureThread.join();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    //@Override
-    public void onShutdownComplete(Node arg0)
-    {
+    @Override
+    public void onShutdownComplete(Node arg0) {
     }
-
 }

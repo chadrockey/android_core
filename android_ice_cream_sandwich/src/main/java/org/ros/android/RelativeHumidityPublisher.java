@@ -38,71 +38,60 @@ import std_msgs.Header;
 /**
  * @author chadrockey@gmail.com (Chad Rockey)
  */
-public class RelativeHumidityPublisher implements NodeMain
-{
+public class RelativeHumidityPublisher implements NodeMain {
 
-    private HumidityThread tmpThread;
+    private HumidityThread relativeHumidityThread;
     private SensorListener sensorListener;
     private SensorManager sensorManager;
     private Publisher<RelativeHumidity> publisher;
     private int sensorDelay;
 
-    private class HumidityThread extends Thread
-    {
+    private class HumidityThread extends Thread {
         private final SensorManager sensorManager;
         private SensorListener sensorListener;
         private Looper threadLooper;
 
 
-        private final Sensor tmpSensor;
+        private final Sensor relativeHumiditySensor;
 
-        private HumidityThread(SensorManager sensorManager, SensorListener sensorListener)
-        {
+        private HumidityThread(SensorManager sensorManager, SensorListener sensorListener) {
             this.sensorManager = sensorManager;
             this.sensorListener = sensorListener;
-            this.tmpSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY);
+            this.relativeHumiditySensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY);
         }
 
 
-        public void run()
-        {
+        public void run() {
             Looper.prepare();
             this.threadLooper = Looper.myLooper();
-            this.sensorManager.registerListener(this.sensorListener, this.tmpSensor, sensorDelay);
+            this.sensorManager.registerListener(this.sensorListener, this.relativeHumiditySensor, sensorDelay);
             Looper.loop();
         }
 
 
-        public void shutdown()
-        {
+        public void shutdown() {
             this.sensorManager.unregisterListener(this.sensorListener);
-            if(this.threadLooper != null)
-            {
+            if(this.threadLooper != null) {
                 this.threadLooper.quit();
             }
         }
     }
 
-    private class SensorListener implements SensorEventListener
-    {
+    private class SensorListener implements SensorEventListener {
 
         private Publisher<RelativeHumidity> publisher;
 
-        private SensorListener(Publisher<RelativeHumidity> publisher)
-        {
+        private SensorListener(Publisher<RelativeHumidity> publisher) {
             this.publisher = publisher;
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy)
-        {
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
         }
 
         @Override
-        public void onSensorChanged(SensorEvent event)
-        {
-            if(event.sensor.getType() == Sensor.TYPE_RELATIVE_HUMIDITY)
-            {
+        public void onSensorChanged(SensorEvent event) {
+            if(event.sensor.getType() == Sensor.TYPE_RELATIVE_HUMIDITY) {
                 RelativeHumidity msg = this.publisher.newMessage();
                 Header header = msg.getHeader();
                 long time_delta_millis = System.currentTimeMillis() - SystemClock.uptimeMillis();
@@ -117,75 +106,59 @@ public class RelativeHumidityPublisher implements NodeMain
         }
     }
 
-    public RelativeHumidityPublisher(SensorManager manager){
+    public RelativeHumidityPublisher(SensorManager manager) {
         this(manager, SensorManager.SENSOR_DELAY_GAME);
     }
 
-    public RelativeHumidityPublisher(SensorManager manager, int sensorDelay)
-    {
+    public RelativeHumidityPublisher(SensorManager manager, int sensorDelay) {
         this.sensorManager = manager;
         this.sensorDelay = sensorDelay;
     }
 
-    public GraphName getDefaultNodeName()
-    {
+    public GraphName getDefaultNodeName() {
         return GraphName.of("android_sensors_driver/relative_humidity_publisher");
     }
 
-    public void onError(Node node, Throwable throwable)
-    {
+    public void onError(Node node, Throwable throwable) {
     }
 
-    public void onStart(ConnectedNode node)
-    {
-        try
-        {
-            List<Sensor> mfList = this.sensorManager.getSensorList(Sensor.TYPE_RELATIVE_HUMIDITY);
+    public void onStart(ConnectedNode node) {
+        try {
+            List<Sensor> relativeHumidityList = this.sensorManager.getSensorList(Sensor.TYPE_RELATIVE_HUMIDITY);
 
-            if(mfList.size() > 0)
-            {
+            if(relativeHumidityList.size() > 0) {
                 this.publisher = node.newPublisher("android/relative_humidity", "sensor_msgs/RelativeHumidity");
                 this.sensorListener = new SensorListener(this.publisher);
-                this.tmpThread = new HumidityThread(this.sensorManager, this.sensorListener);
-                this.tmpThread.start();
+                this.relativeHumidityThread = new HumidityThread(this.sensorManager, this.sensorListener);
+                this.relativeHumidityThread.start();
             }
 
-        }
-        catch (Exception e)
-        {
-            if (node != null)
-            {
+        } catch (Exception e) {
+            if (node != null) {
                 node.getLog().fatal(e);
-            }
-            else
-            {
+            } else {
                 e.printStackTrace();
             }
         }
     }
 
-    //@Override
-    public void onShutdown(Node arg0)
-    {
-        if(this.tmpThread == null){
+    @Override
+    public void onShutdown(Node node) {
+        if(this.relativeHumidityThread == null) {
             return;
         }
 
-        this.tmpThread.shutdown();
+        this.relativeHumidityThread.shutdown();
 
-        try
-        {
-            this.tmpThread.join();
-        }
-        catch (InterruptedException e)
-        {
+        try {
+            this.relativeHumidityThread.join();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    //@Override
-    public void onShutdownComplete(Node arg0)
-    {
+    @Override
+    public void onShutdownComplete(Node node) {
     }
 
 }

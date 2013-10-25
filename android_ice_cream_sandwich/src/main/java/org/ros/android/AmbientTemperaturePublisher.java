@@ -38,71 +38,60 @@ import org.ros.node.topic.Publisher;
 /**
  * @author chadrockey@gmail.com (Chad Rockey)
  */
-public class AmbientTemperaturePublisher implements NodeMain
-{
+public class AmbientTemperaturePublisher implements NodeMain {
 
-    private TemperatureThread tmpThread;
+    private TemperatureThread ambientTemperatureThread;
     private SensorListener sensorListener;
     private SensorManager sensorManager;
     private Publisher<Temperature> publisher;
     private int sensorDelay;
 
-    private class TemperatureThread extends Thread
-    {
+    private class TemperatureThread extends Thread {
         private final SensorManager sensorManager;
         private SensorListener sensorListener;
         private Looper threadLooper;
 
 
-        private final Sensor tmpSensor;
+        private final Sensor ambientTemperatureSensor;
 
-        private TemperatureThread(SensorManager sensorManager, SensorListener sensorListener)
-        {
+        private TemperatureThread(SensorManager sensorManager, SensorListener sensorListener) {
             this.sensorManager = sensorManager;
             this.sensorListener = sensorListener;
-            this.tmpSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE);
+            this.ambientTemperatureSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE);
         }
 
 
-        public void run()
-        {
+        public void run() {
             Looper.prepare();
             this.threadLooper = Looper.myLooper();
-            this.sensorManager.registerListener(this.sensorListener, this.tmpSensor, sensorDelay);
+            this.sensorManager.registerListener(this.sensorListener, this.ambientTemperatureSensor, sensorDelay);
             Looper.loop();
         }
 
 
-        public void shutdown()
-        {
+        public void shutdown() {
             this.sensorManager.unregisterListener(this.sensorListener);
-            if(this.threadLooper != null)
-            {
+            if(this.threadLooper != null) {
                 this.threadLooper.quit();
             }
         }
     }
 
-    private class SensorListener implements SensorEventListener
-    {
+    private class SensorListener implements SensorEventListener {
 
         private Publisher<Temperature> publisher;
 
-        private SensorListener(Publisher<Temperature> publisher)
-        {
+        private SensorListener(Publisher<Temperature> publisher) {
             this.publisher = publisher;
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy)
-        {
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
         }
 
         @Override
-        public void onSensorChanged(SensorEvent event)
-        {
-            if(event.sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE)
-            {
+        public void onSensorChanged(SensorEvent event) {
+            if(event.sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE) {
                 Temperature msg = this.publisher.newMessage();
                 Header header = msg.getHeader();
                 long time_delta_millis = System.currentTimeMillis() - SystemClock.uptimeMillis();
@@ -117,75 +106,60 @@ public class AmbientTemperaturePublisher implements NodeMain
         }
     }
 
-    public AmbientTemperaturePublisher(SensorManager manager){
+    public AmbientTemperaturePublisher(SensorManager manager) {
         this(manager, SensorManager.SENSOR_DELAY_GAME);
     }
 
-    public AmbientTemperaturePublisher(SensorManager manager, int sensorDelay)
-    {
+    public AmbientTemperaturePublisher(SensorManager manager, int sensorDelay) {
         this.sensorManager = manager;
         this.sensorDelay = sensorDelay;
     }
 
-    public GraphName getDefaultNodeName()
-    {
+    public GraphName getDefaultNodeName() {
         return GraphName.of("android_sensors_driver/ambient_temperature_publisher");
     }
 
-    public void onError(Node node, Throwable throwable)
-    {
+    public void onError(Node node, Throwable throwable) {
     }
 
-    public void onStart(ConnectedNode node)
-    {
-        try
-        {
-            List<Sensor> mfList = this.sensorManager.getSensorList(Sensor.TYPE_AMBIENT_TEMPERATURE);
+    public void onStart(ConnectedNode node) {
+        try {
+            List<Sensor> ambientTemperatureList = this.sensorManager.getSensorList(Sensor.TYPE_AMBIENT_TEMPERATURE);
 
-            if(mfList.size() > 0)
+            if(ambientTemperatureList.size() > 0)
             {
                 this.publisher = node.newPublisher("android/ambient_temperature", "sensor_msgs/Temperature");
                 this.sensorListener = new SensorListener(this.publisher);
-                this.tmpThread = new TemperatureThread(this.sensorManager, this.sensorListener);
-                this.tmpThread.start();
+                this.ambientTemperatureThread = new TemperatureThread(this.sensorManager, this.sensorListener);
+                this.ambientTemperatureThread.start();
             }
 
-        }
-        catch (Exception e)
-        {
-            if (node != null)
-            {
+        } catch (Exception e) {
+            if (node != null) {
                 node.getLog().fatal(e);
-            }
-            else
-            {
+            } else {
                 e.printStackTrace();
             }
         }
     }
 
-    //@Override
-    public void onShutdown(Node arg0)
-    {
-        if(this.tmpThread == null){
+    @Override
+    public void onShutdown(Node node) {
+        if(this.ambientTemperatureThread == null) {
             return;
         }
 
-        this.tmpThread.shutdown();
+        this.ambientTemperatureThread.shutdown();
 
-        try
-        {
-            this.tmpThread.join();
-        }
-        catch (InterruptedException e)
-        {
+        try {
+            this.ambientTemperatureThread.join();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    //@Override
-    public void onShutdownComplete(Node arg0)
-    {
+    @Override
+    public void onShutdownComplete(Node node) {
     }
 
 }

@@ -41,67 +41,57 @@ import org.ros.node.topic.Publisher;
 public class IlluminancePublisher implements NodeMain
 {
 
-    private IlluminanceThread ilThread;
+    private IlluminanceThread illuminanceThread;
     private SensorListener sensorListener;
     private SensorManager sensorManager;
     private Publisher<Illuminance> publisher;
     private int sensorDelay;
 
-    private class IlluminanceThread extends Thread
-    {
+    private class IlluminanceThread extends Thread {
         private final SensorManager sensorManager;
         private SensorListener sensorListener;
         private Looper threadLooper;
 
-        private final Sensor ilSensor;
+        private final Sensor illuminanceSensor;
 
-        private IlluminanceThread(SensorManager sensorManager, SensorListener sensorListener)
-        {
+        private IlluminanceThread(SensorManager sensorManager, SensorListener sensorListener) {
             this.sensorManager = sensorManager;
             this.sensorListener = sensorListener;
-            this.ilSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+            this.illuminanceSensor = this.sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         }
 
 
-        public void run()
-        {
+        public void run() {
             Looper.prepare();
             this.threadLooper = Looper.myLooper();
-            this.sensorManager.registerListener(this.sensorListener, this.ilSensor, sensorDelay);
+            this.sensorManager.registerListener(this.sensorListener, this.illuminanceSensor, sensorDelay);
             Looper.loop();
         }
 
 
-        public void shutdown()
-        {
+        public void shutdown() {
             this.sensorManager.unregisterListener(this.sensorListener);
-            if(this.threadLooper != null)
-            {
+            if(this.threadLooper != null) {
                 this.threadLooper.quit();
             }
         }
     }
 
-    private class SensorListener implements SensorEventListener
-    {
+    private class SensorListener implements SensorEventListener {
 
         private Publisher<Illuminance> publisher;
 
-        private SensorListener(Publisher<Illuminance> publisher)
-        {
+        private SensorListener(Publisher<Illuminance> publisher) {
             this.publisher = publisher;
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy)
-        {
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
         }
 
         @Override
-        public void onSensorChanged(SensorEvent event)
-        {
-            if(event.sensor.getType() == Sensor.TYPE_LIGHT)
-            {
+        public void onSensorChanged(SensorEvent event) {
+            if(event.sensor.getType() == Sensor.TYPE_LIGHT) {
                 Illuminance msg = this.publisher.newMessage();
                 Header header = msg.getHeader();
                 long time_delta_millis = System.currentTimeMillis() - SystemClock.uptimeMillis();
@@ -116,76 +106,59 @@ public class IlluminancePublisher implements NodeMain
         }
     }
 
-    public IlluminancePublisher(SensorManager manager)
-    {
+    public IlluminancePublisher(SensorManager manager) {
         this(manager, SensorManager.SENSOR_DELAY_GAME);
     }
 
-    public IlluminancePublisher(SensorManager manager, int sensorDelay)
-    {
+    public IlluminancePublisher(SensorManager manager, int sensorDelay) {
         this.sensorManager = manager;
         this.sensorDelay = sensorDelay;
     }
 
-    public GraphName getDefaultNodeName()
-    {
+    public GraphName getDefaultNodeName() {
         return GraphName.of("android/illuminance_publisher");
     }
 
-    public void onError(Node node, Throwable throwable)
-    {
+    public void onError(Node node, Throwable throwable) {
     }
 
-    public void onStart(ConnectedNode node)
-    {
-        try
-        {
-            List<Sensor> mfList = this.sensorManager.getSensorList(Sensor.TYPE_LIGHT);
+    public void onStart(ConnectedNode node) {
+        try {
+            List<Sensor> illuminanceList = this.sensorManager.getSensorList(Sensor.TYPE_LIGHT);
 
-            if(mfList.size() > 0)
-            {
+            if(illuminanceList.size() > 0) {
                 this.publisher = node.newPublisher("android/illuminance", "sensor_msgs/Illuminance");
                 this.sensorListener = new SensorListener(this.publisher);
-                this.ilThread = new IlluminanceThread(this.sensorManager, this.sensorListener);
-                this.ilThread.start();
+                this.illuminanceThread = new IlluminanceThread(this.sensorManager, this.sensorListener);
+                this.illuminanceThread.start();
             }
 
-        }
-        catch (Exception e)
-        {
-            if (node != null)
-            {
+        } catch (Exception e) {
+            if (node != null) {
                 node.getLog().fatal(e);
-            }
-            else
-            {
+            } else {
                 e.printStackTrace();
             }
         }
     }
 
-    //@Override
-    public void onShutdown(Node arg0)
-    {
-        if(this.ilThread == null){
+    @Override
+    public void onShutdown(Node node) {
+        if(this.illuminanceThread == null){
             return;
         }
 
-        this.ilThread.shutdown();
+        this.illuminanceThread.shutdown();
 
-        try
-        {
-            this.ilThread.join();
-        }
-        catch (InterruptedException e)
-        {
+        try {
+            this.illuminanceThread.join();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    //@Override
-    public void onShutdownComplete(Node arg0)
-    {
+    @Override
+    public void onShutdownComplete(Node node) {
     }
 
 }

@@ -49,7 +49,7 @@ public class NavSatFixPublisher implements NodeMain {
         NavSatListener navSatListener;
         private Looper threadLooper;
 
-        private NavSatThread(LocationManager locationManager, NavSatListener navSatListener){
+        private NavSatThread(LocationManager locationManager, NavSatListener navSatListener) {
             this.locationManager = locationManager;
             this.navSatListener = navSatListener;
         }
@@ -61,9 +61,9 @@ public class NavSatFixPublisher implements NodeMain {
             Looper.loop();
         }
 
-        public void shutdown(){
+        public void shutdown() {
             this.locationManager.removeUpdates(this.navSatListener);
-            if(threadLooper != null){
+            if(threadLooper != null) {
                 threadLooper.quit();
             }
         }
@@ -81,8 +81,7 @@ public class NavSatFixPublisher implements NodeMain {
         }
 
         @Override
-        public void onLocationChanged(Location location)
-        {
+        public void onLocationChanged(Location location) {
             NavSatFix fix = this.publisher.newMessage();
             Header header = fix.getHeader();
             header.setStamp(Time.fromMillis(System.currentTimeMillis()));
@@ -98,8 +97,8 @@ public class NavSatFixPublisher implements NodeMain {
             fix.setPositionCovarianceType(NavSatFix.COVARIANCE_TYPE_APPROXIMATED);
             double deviation = location.getAccuracy();
             double covariance = deviation*deviation;
-            double[] tmpCov = {covariance,0,0, 0,covariance,0, 0,0,covariance};
-            fix.setPositionCovariance(tmpCov);
+            double[] covarianceArray = {covariance,0,0, 0,covariance,0, 0,0,covariance};
+            fix.setPositionCovariance(covarianceArray);
             publisher.publish(fix);
         }
 
@@ -131,32 +130,25 @@ public class NavSatFixPublisher implements NodeMain {
         this.locationManager = manager;
     }
 
-    //@Override
-    public void onStart(ConnectedNode node)
-    {
-        try
-        {
+    @Override
+    public void onStart(ConnectedNode node) {
+        try {
             this.publisher = node.newPublisher("android/fix", "sensor_msgs/NavSatFix");
             this.navSatFixListener = new NavSatListener(publisher);
             this.navSatThread = new NavSatThread(this.locationManager, this.navSatFixListener);
             this.navSatThread.start();
-        }
-        catch (Exception e)
-        {
-            if (node != null)
-            {
+        } catch (Exception e) {
+            if (node != null) {
                 node.getLog().fatal(e);
-            }
-            else
-            {
+            } else {
                 e.printStackTrace();
             }
         }
     }
 
-    //@Override
-    public void onShutdown(Node arg0) {
-        if(this.navSatThread == null){
+    @Override
+    public void onShutdown(Node node) {
+        if(this.navSatThread == null) {
             return;
         }
 
@@ -168,17 +160,15 @@ public class NavSatFixPublisher implements NodeMain {
         }
     }
 
-    //@Override
-    public void onShutdownComplete(Node arg0) {
+    @Override
+    public void onShutdownComplete(Node node) {
     }
 
-    public GraphName getDefaultNodeName()
-    {
+    public GraphName getDefaultNodeName() {
         return GraphName.of("android/nav_sat_fix_publisher");
     }
 
-    public void onError(Node node, Throwable throwable)
-    {
+    public void onError(Node node, Throwable throwable) {
     }
 
 }
